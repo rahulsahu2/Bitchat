@@ -10,7 +10,7 @@ class DatabaseService {
   late final Isar isar;
 
   /// Initializes the Isar instance and opens the necessary schemas.
-  Future<void> init({String? directoryPath}) async {
+  Future<void> init({String? directoryPath, String name = 'default'}) async {
     final String path;
     if (directoryPath != null) {
       path = directoryPath;
@@ -28,6 +28,7 @@ class DatabaseService {
         PacketHistorySchema,
       ],
       directory: path,
+      name: name,
     );
   }
 

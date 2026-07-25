@@ -17,7 +17,7 @@ class VirtualPosition {
 /// Information about a simulated node in the virtual medium registry.
 class SimulatedNodeRegistryEntry {
   final String userId;
-  final String nickname;
+  String nickname;
   final VirtualPosition position;
   bool isAdvertising;
   bool isScanning;
@@ -60,13 +60,9 @@ class MockBleMedium {
     if (nodes.containsKey(userId)) {
       // Update nickname if already registered
       final existing = nodes[userId]!;
-      nodes[userId] = SimulatedNodeRegistryEntry(
-        userId: userId,
-        nickname: nickname,
-        position: existing.position,
-        isAdvertising: existing.isAdvertising,
-        isScanning: existing.isScanning,
-      )..connectedPeers.addAll(existing.connectedPeers);
+      existing.nickname = nickname;
+      if (x != null) existing.position.x = x;
+      if (y != null) existing.position.y = y;
     } else {
       // Allocate randomized starting position
       final random = Random();

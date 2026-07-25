@@ -10,8 +10,8 @@ This document tracks the features implemented in the Bluetooth Mesh Chat App and
 | Cryptography (P-256, AES-GCM, ECDSA) | ✅ Completed | ECDH key agreement, AES-256-GCM, and signatures using PointyCastle. |
 | Database (Isar & Schemas) | ✅ Completed | Isar database with schemas, queries, and transactions. |
 | BLE / Mock BLE Simulation Layer | ✅ Completed | Interfaces, RealBleService, and coordinate-based MockBleService. |
-| Mesh Routing (AODV + Flood) | ⏳ Not Started | Next up. |
-| State Management (Riverpod Providers) | ⏳ Not Started | |
+| Mesh Routing (AODV + Flood) | ✅ Completed | AODV path discovery, flood protection, routing tables, and file chunking. |
+| State Management (Riverpod Providers) | ⏳ Not Started | Next up. |
 | WhatsApp UI/UX | ⏳ Not Started | |
 | Group Chat Support | ⏳ Not Started | |
 | Media / File Transfer with Chunking | ⏳ Not Started | |
@@ -24,11 +24,12 @@ This document tracks the features implemented in the Bluetooth Mesh Chat App and
 
 ## Current Step
 
-1. **Implement Mesh Routing Engine**:
-   - Create `Packet` data structure with JSON serialization/deserialization.
-   - Implement `MeshRouter` carrying neighbor table, route caches, duplicate packet tracking, heartbeat emission, route discovery, and packet relaying.
-   - Implement packet fragmentation and reassembly (chunking) for files/large payloads.
-   - Write unit tests verifying AODV routing, flood protection, and chunk reassembly.
+1. **Implement State Management (Riverpod Providers)**:
+   - Implement the `DatabaseService` and `MeshRouter` singleton providers.
+   - Implement the `UserIdentityNotifier` provider to manage profile creation, retrieval, and updates.
+   - Implement the `NearbyDevicesNotifier` provider listing discovered neighbors.
+   - Implement the `ChatsNotifier` and `MessagesNotifier` providers tracking active chat threads and messages in real-time.
+   - Write Riverpod state tests.
 
 ---
 
