@@ -27,6 +27,10 @@ subprojects {
                     val fallbackGroup = "com.bitchat.${proj.name.replace('-', '_')}"
                     namespace = if (proj.group.toString().isNotEmpty()) proj.group.toString() else fallbackGroup
                 }
+                val currentSdk = compileSdk
+                if (currentSdk == null || currentSdk < 34) {
+                    compileSdk = 34
+                }
             }
         }
     }
