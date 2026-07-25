@@ -1,0 +1,83 @@
+name: Flutter Android Release
+
+on:
+  push:
+    branches:
+      - master
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Android Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter Version
+        run: flutter --version
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Analyze Project
+        run: flutter analyze
+
+      - name: Run Tests
+        run: |
+          if [ -d "test" ]; then
+            flutter test
+          else
+            echo "No tests found."
+          fi
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Build AAB
+        run: flutter build appbundle --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+
+      - name: Generate Release Tag
+        id: tag
+        run: |
+          TAG=v$(date +"%Y.%m.%d-%H%M")
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Release ${{ steps.tag.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
