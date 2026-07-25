@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../core/services/providers.dart';
 import 'chat_screen.dart';
-import '../widgets/chat_bubble.dart';
+import 'widgets/chat_bubble.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../settings/presentation/qr_pairing_screen.dart';
 
@@ -53,6 +54,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         bottom: TabBar(
           controller: _tabController,
           indicatorWeight: 3.0,
+          labelColor: isDark ? theme.colorScheme.secondary : Colors.white,
+          unselectedLabelColor: isDark ? Colors.grey : const Color(0xB3FFFFFF),
+          indicatorColor: isDark ? theme.colorScheme.secondary : Colors.white,
           tabs: const [
             Tab(text: 'CHATS', icon: Icon(Icons.chat_bubble)),
             Tab(text: 'NEARBY', icon: Icon(Icons.radar)),

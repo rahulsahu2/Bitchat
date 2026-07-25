@@ -55,6 +55,7 @@ class MeshRouter {
   final DatabaseService dbService;
 
   UserIdentity? _identity;
+  UserIdentity? get identity => _identity;
   bool _isPairingEnabled = true;
 
   // Active neighbors

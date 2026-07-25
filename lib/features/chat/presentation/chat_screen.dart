@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/services/database/schemas/message.dart';
 import '../../../core/services/providers.dart';
 import 'widgets/chat_bubble.dart';
@@ -53,7 +54,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     try {
       _textController.clear();
-      final replyId = _replyingToMessage?.id;
+      final replyId = _replyingToMessage?.messageId;
       setState(() => _replyingToMessage = null);
 
       await router.sendMessage(
@@ -93,9 +94,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         SnackBar(content: Text('Chunking and sending file: ${result.files.single.name}...')),
       );
 
-      await router.sendFile(
+      await router.sendMessage(
         widget.peerId,
-        filePath,
+        '',
+        mediaPath: filePath,
         mediaType: isImage ? 'image' : 'file',
       );
 
@@ -130,7 +132,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               return InkWell(
                 onTap: () async {
                   final db = ref.read(databaseServiceProvider);
-                  msg.reactions = emoji;
+                  msg.reaction = emoji;
                   await db.saveMessage(msg);
                   
                   // Also send reaction packet to peer

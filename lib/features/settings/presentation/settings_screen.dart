@@ -213,8 +213,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 // Settings List Section
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
-                  child: Text('DEVELOPER OPTIONS'),
+                  child: Text(
+                    'DEVELOPER OPTIONS',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+                  ),
                 ),
                 
                 // Simulation toggle

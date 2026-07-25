@@ -82,7 +82,7 @@ class ChatBubble extends StatelessWidget {
                     // Reply block if present
                     if (replyToText != null)
                       Container(
-                        margin: const EdgeInsets.bottom(6),
+                        margin: const EdgeInsets.only(bottom: 6),
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.06),
@@ -109,7 +109,7 @@ class ChatBubble extends StatelessWidget {
                     // Media image if exists
                     if (message.mediaPath != null)
                       Container(
-                        margin: const EdgeInsets.bottom(6),
+                        margin: const EdgeInsets.only(bottom: 6),
                         clipBehavior: Clip.antiAlias,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
@@ -181,8 +181,7 @@ class ChatBubble extends StatelessWidget {
                 ),
               ),
 
-              // Reactions overlay row
-              if (message.reactions != null && message.reactions!.isNotEmpty)
+              if (message.reaction != null && message.reaction!.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 2, left: 6, right: 6),
                   child: Container(
@@ -196,7 +195,7 @@ class ChatBubble extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      message.reactions!,
+                      message.reaction!,
                       style: const TextStyle(fontSize: 12),
                     ),
                   ),

@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/services/providers.dart';
 import '../../../core/services/database/schemas/peer.dart';
 import '../../../core/services/encryption/crypto_service.dart';
+import 'package:uuid/uuid.dart';
 
 class QrPairingScreen extends ConsumerStatefulWidget {
   const QrPairingScreen({super.key});
@@ -45,11 +46,7 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
       peer.lastSeen = DateTime.now();
       await db.savePeer(peer);
 
-      // Force neighbor table refresh
-      final router = ref.read(meshRouterStateProvider).valueOrNull;
-      if (router != null) {
-        router.refreshNeighbors();
-      }
+
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -275,7 +272,7 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                         );
                         return;
                       }
-                      _pairPeer(name, const Uuid().v4(), key);
+                      _pairPeer(name, Uuid().v4(), key);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: theme.colorScheme.primary,

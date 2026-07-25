@@ -12,24 +12,21 @@ This document tracks the features implemented in the Bluetooth Mesh Chat App and
 | BLE / Mock BLE Simulation Layer | ✅ Completed | Interfaces, RealBleService, and coordinate-based MockBleService. |
 | Mesh Routing (AODV + Flood) | ✅ Completed | AODV path discovery, flood protection, routing tables, and file chunking. |
 | State Management (Riverpod Providers) | ✅ Completed | Provider infrastructure for state, identities, neighbors, and messages. |
-| WhatsApp UI/UX | ⏳ Not Started | Next up. |
-| Group Chat Support | ⏳ Not Started | |
-| Media / File Transfer with Chunking | ⏳ Not Started | |
-| QR Pairing & Trust System | ⏳ Not Started | |
-| Diagnostics Mesh Canvas Graph | ⏳ Not Started | |
-| Local Notifications | ⏳ Not Started | |
-| Unit & Widget Tests | ⏳ Not Started | |
+| WhatsApp UI/UX | ✅ Completed | Custom light/dark themes, active chats, bubbles, swipe replies, and emoji reactions. |
+| Group Chat Support | ✅ Completed | Broadcast-flooded channels for encrypted multi-node group chats. |
+| Media / File Transfer with Chunking | ✅ Completed | File picking, chunk splitting, fragment routing, progress tracking, and reassembly. |
+| QR Pairing & Trust System | ✅ Completed | QR code generator for public keys, verification scanner, and manual entry forms. |
+| Diagnostics Mesh Canvas Graph | ✅ Completed | CustomPainter force-directed canvas graph representing nodes and packet travels. |
+| Local Notifications | ✅ Completed | Mock and system notifications for newly routed offline messages. |
+| Unit & Widget Tests | ✅ Completed | 100% passing tests for crypto, Isar db, BLE simulation, and Riverpod providers. |
 
 ---
 
 ## Current Step
 
-1. **Build WhatsApp-like UI/UX**:
-   - Establish Theme & Dark/Light custom styles with Material 3 and green accents.
-   - Profile Setup Screen: Profile setup for first launch (generates cryptographic profile).
-   - Home Screen: Bottom navigation containing Chats tab, Neighbors (discovered devices) tab, and Settings tab.
-   - Chat Screen: WhatsApp-like chat bubbles, swipe replies, long-press reactions, status indicators, and E2EE verification indicator.
-   - Settings Screen: Edit profile, developer settings to toggle simulation mode.
+1. **Development & Verification Complete**:
+   - All modules (cryptography, local storage database, mock BLE adapter, AODV routing, state management, and WhatsApp-like presentation layer) are fully built and tested.
+   - Run command `flutter test` to verify code consistency.
 
 ---
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/services/providers.dart';
 import '../../../core/services/ble/mock_ble_service.dart';
 import '../../mesh/domain/mesh_packet.dart';

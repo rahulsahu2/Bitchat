@@ -34,18 +34,9 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
       ),
-      tabBarTheme: const TabBarTheme(
-        labelColor: Colors.white,
-        unselectedLabelColor: Color(0xB3FFFFFF),
-        indicatorColor: Colors.white,
-      ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: lightGreen,
         foregroundColor: Colors.white,
-      ),
-      cardTheme: const CardTheme(
-        color: Colors.white,
-        elevation: 1,
       ),
     );
   }
@@ -68,18 +59,9 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
       ),
-      tabBarTheme: const TabBarTheme(
-        labelColor: lightGreen,
-        unselectedLabelColor: Colors.grey,
-        indicatorColor: lightGreen,
-      ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: lightGreen,
         foregroundColor: Colors.white,
-      ),
-      cardTheme: const CardTheme(
-        color: darkSurface,
-        elevation: 0,
       ),
     );
   }

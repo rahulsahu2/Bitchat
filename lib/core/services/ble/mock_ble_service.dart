@@ -134,6 +134,10 @@ class MockBleMedium {
     }
   }
 
+  void triggerScanUpdate() {
+    _updateScans();
+  }
+
   /// Calculates scan lists for all scanning nodes based on distances to advertising nodes.
   void _updateScans() {
     for (final scanner in nodes.values) {
