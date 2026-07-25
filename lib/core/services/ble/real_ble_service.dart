@@ -71,7 +71,7 @@ class RealBleService implements BleService {
               bp.CharacteristicProperties.notify.index,
             ],
             permissions: [
-              bp.AttributePermissions.writable.index,
+              bp.AttributePermissions.writeable.index,
               bp.AttributePermissions.readable.index,
             ],
             value: null,
@@ -81,13 +81,13 @@ class RealBleService implements BleService {
 
       await bp.BlePeripheral.addService(service);
 
-      // Handle Central writes to our Data characteristic
-      bp.BlePeripheral.setWriteRequestCallback((req) {
-        if (req.characteristicId.toLowerCase() == _dataCharUuid.toLowerCase()) {
+      bp.BlePeripheral.setWriteRequestCallback((deviceId, characteristicId, offset, value) {
+        if (characteristicId.toLowerCase() == _dataCharUuid.toLowerCase() && value != null) {
           _incomingDataController.add(
-            BleDataPacket(req.deviceId, Uint8List.fromList(req.value)),
+            BleDataPacket(deviceId, value),
           );
         }
+        return null;
       });
 
       // Handle Central connections to our GATT server
