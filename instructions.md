@@ -11,8 +11,8 @@ This document tracks the features implemented in the Bluetooth Mesh Chat App and
 | Database (Isar & Schemas) | ✅ Completed | Isar database with schemas, queries, and transactions. |
 | BLE / Mock BLE Simulation Layer | ✅ Completed | Interfaces, RealBleService, and coordinate-based MockBleService. |
 | Mesh Routing (AODV + Flood) | ✅ Completed | AODV path discovery, flood protection, routing tables, and file chunking. |
-| State Management (Riverpod Providers) | ⏳ Not Started | Next up. |
-| WhatsApp UI/UX | ⏳ Not Started | |
+| State Management (Riverpod Providers) | ✅ Completed | Provider infrastructure for state, identities, neighbors, and messages. |
+| WhatsApp UI/UX | ⏳ Not Started | Next up. |
 | Group Chat Support | ⏳ Not Started | |
 | Media / File Transfer with Chunking | ⏳ Not Started | |
 | QR Pairing & Trust System | ⏳ Not Started | |
@@ -24,12 +24,12 @@ This document tracks the features implemented in the Bluetooth Mesh Chat App and
 
 ## Current Step
 
-1. **Implement State Management (Riverpod Providers)**:
-   - Implement the `DatabaseService` and `MeshRouter` singleton providers.
-   - Implement the `UserIdentityNotifier` provider to manage profile creation, retrieval, and updates.
-   - Implement the `NearbyDevicesNotifier` provider listing discovered neighbors.
-   - Implement the `ChatsNotifier` and `MessagesNotifier` providers tracking active chat threads and messages in real-time.
-   - Write Riverpod state tests.
+1. **Build WhatsApp-like UI/UX**:
+   - Establish Theme & Dark/Light custom styles with Material 3 and green accents.
+   - Profile Setup Screen: Profile setup for first launch (generates cryptographic profile).
+   - Home Screen: Bottom navigation containing Chats tab, Neighbors (discovered devices) tab, and Settings tab.
+   - Chat Screen: WhatsApp-like chat bubbles, swipe replies, long-press reactions, status indicators, and E2EE verification indicator.
+   - Settings Screen: Edit profile, developer settings to toggle simulation mode.
 
 ---
 
