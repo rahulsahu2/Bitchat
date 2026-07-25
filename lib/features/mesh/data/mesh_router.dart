@@ -241,15 +241,13 @@ class MeshRouter {
     
     // Save/update Chat metadata
     var chat = await dbService.getChat(destinationUserId);
-    if (chat == null) {
-      chat = Chat()
-        ..chatId = destinationUserId
-        ..name = peer.nickname
-        ..isGroup = false
-        ..unreadCount = 0
-        ..isPinned = false
-        ..isArchived = false;
-    }
+    chat ??= Chat()
+      ..chatId = destinationUserId
+      ..name = peer.nickname
+      ..isGroup = false
+      ..unreadCount = 0
+      ..isPinned = false
+      ..isArchived = false;
     chat.lastMessageText = text.isNotEmpty ? text : (mediaType ?? 'Media');
     chat.lastMessageTime = DateTime.now();
     await dbService.saveChat(chat);
@@ -405,14 +403,12 @@ class MeshRouter {
       // Add to Database Peers collection
       var peer = await dbService.getPeer(peerId);
       final isNewPeer = peer == null;
-      if (peer == null) {
-        peer = Peer()
-          ..userId = peerId
-          ..publicKey = pubKey ?? ''
-          ..isTrusted = false // Defaults to untrusted until pairing verification
-          ..isBlocked = false
-          ..avatarColor = 0xFF4CAF50; // Default green avatar color
-      }
+      peer ??= Peer()
+        ..userId = peerId
+        ..publicKey = pubKey ?? ''
+        ..isTrusted = false // Defaults to untrusted until pairing verification
+        ..isBlocked = false
+        ..avatarColor = 0xFF4CAF50; // Default green avatar color
       peer.nickname = nickname;
       peer.status = 'Online';
       peer.lastSeen = DateTime.now();
@@ -559,17 +555,15 @@ class MeshRouter {
 
       // Update Chat
       var chat = await dbService.getChat(packet.senderId);
-      if (chat == null) {
-        chat = Chat()
-          ..chatId = packet.senderId
-          ..name = peer.nickname
-          ..isGroup = false
-          ..unreadCount = 0
-          ..lastMessageText = ''
-          ..lastMessageTime = DateTime.now()
-          ..isPinned = false
-          ..isArchived = false;
-      }
+      chat ??= Chat()
+        ..chatId = packet.senderId
+        ..name = peer.nickname
+        ..isGroup = false
+        ..unreadCount = 0
+        ..lastMessageText = ''
+        ..lastMessageTime = DateTime.now()
+        ..isPinned = false
+        ..isArchived = false;
       chat.unreadCount += 1;
       chat.lastMessageText = text.isNotEmpty ? text : (mediaType ?? 'Media');
       chat.lastMessageTime = DateTime.now();
