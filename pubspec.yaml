@@ -19,7 +19,7 @@ dependencies:
 
   # Bluetooth P2P
   flutter_blue_plus: ^1.31.7
-  flutter_ble_peripheral: ^2.1.1
+  ble_peripheral: ^2.4.0
 
   # Cryptography & Identifiers
   uuid: ^4.3.3
