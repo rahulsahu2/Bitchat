@@ -8,8 +8,8 @@ This document tracks the features implemented in the Bluetooth Mesh Chat App and
 |---------|--------|-------|
 | Project Setup & Git Init | ✅ Completed | Flutter 3.38.5, Dart 3.10.4, dependencies updated. |
 | Cryptography (P-256, AES-GCM, ECDSA) | ✅ Completed | ECDH key agreement, AES-256-GCM, and signatures using PointyCastle. |
-| Database (Isar & Schemas) | ⏳ Not Started | Next up. |
-| BLE / Mock BLE Simulation Layer | ⏳ Not Started | |
+| Database (Isar & Schemas) | ✅ Completed | Isar database with schemas, queries, and transactions. |
+| BLE / Mock BLE Simulation Layer | ⏳ Not Started | Next up. |
 | Mesh Routing (AODV + Flood) | ⏳ Not Started | |
 | State Management (Riverpod Providers) | ⏳ Not Started | |
 | WhatsApp UI/UX | ⏳ Not Started | |
@@ -24,11 +24,11 @@ This document tracks the features implemented in the Bluetooth Mesh Chat App and
 
 ## Current Step
 
-1. **Implement Database Module**:
-   - Define Isar collection models: `UserIdentity`, `Peer`, `Chat`, `Message`, and `PacketHistory`.
-   - Implement the `DatabaseService` to manage Isar instance initialization, queries, and writes.
-   - Run `build_runner` to generate the Isar schemas.
-   - Verify with database helper unit tests.
+1. **Implement BLE and Mock BLE Simulation Layer**:
+   - Define the `BleService` interface representing Bluetooth discovery and data transmission.
+   - Implement `RealBleService` using `flutter_blue_plus` and `flutter_ble_peripheral`.
+   - Implement `MockBleService` to manage simulated nodes in memory for rapid local testing without physical devices.
+   - Set up automatic scanning and background advertising toggle.
 
 ---
 
