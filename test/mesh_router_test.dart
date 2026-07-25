@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar/isar.dart';
 import 'package:bitchat/core/services/ble/mock_ble_service.dart';
@@ -179,8 +179,8 @@ void main() {
       await bleBob.connectTo('charlie-id');
 
       await Future.delayed(const Duration(milliseconds: 600));
-      print('DEBUG: Alice neighbors: ${routerAlice.activeNeighbors.map((n) => "${n.userId}:${n.isConnected}").toList()}');
-      print('DEBUG: Charlie neighbors: ${routerCharlie.activeNeighbors.map((n) => "${n.userId}:${n.isConnected}").toList()}');
+      debugPrint('DEBUG: Alice neighbors: ${routerAlice.activeNeighbors.map((n) => "${n.userId}:${n.isConnected}").toList()}');
+      debugPrint('DEBUG: Charlie neighbors: ${routerCharlie.activeNeighbors.map((n) => "${n.userId}:${n.isConnected}").toList()}');
 
       expect(routerAlice.activeNeighbors.any((n) => n.userId == 'bob-id' && n.isConnected), isTrue);
       expect(routerCharlie.activeNeighbors.any((n) => n.userId == 'bob-id' && n.isConnected), isTrue);

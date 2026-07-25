@@ -168,7 +168,14 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                         version: QrVersions.auto,
                         size: 240.0,
                         gapless: false,
-                        foregroundColor: Colors.black,
+                        eyeStyle: const QrEyeStyle(
+                          eyeShape: QrEyeShape.square,
+                          color: Colors.black,
+                        ),
+                        dataModuleStyle: const QrDataModuleStyle(
+                          dataModuleShape: QrDataModuleShape.square,
+                          color: Colors.black,
+                        ),
                       ),
                     ),
                   ),
@@ -308,7 +315,7 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                         );
                         return;
                       }
-                      _pairPeer(name, Uuid().v4(), key);
+                      _pairPeer(name, const Uuid().v4(), key);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: theme.colorScheme.primary,
