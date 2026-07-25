@@ -1,17 +1,13 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar/isar.dart';
-import 'package:bitchat/core/services/ble/ble_service.dart';
 import 'package:bitchat/core/services/ble/mock_ble_service.dart';
 import 'package:bitchat/core/services/database/database_service.dart';
 import 'package:bitchat/core/services/database/schemas/user_identity.dart';
 import 'package:bitchat/core/services/database/schemas/peer.dart';
 import 'package:bitchat/core/services/encryption/crypto_service.dart';
 import 'package:bitchat/features/mesh/data/mesh_router.dart';
-import 'package:bitchat/features/mesh/domain/mesh_packet.dart';
 
 void main() {
   setUpAll(() async {

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' as fbp;
 import 'package:ble_peripheral/ble_peripheral.dart' as bp;
@@ -137,8 +136,8 @@ class RealBleService implements BleService {
 
           if (isMesh) {
             final devId = r.device.remoteId.str;
-            final name = r.advertisementData.localName.isNotEmpty
-                ? r.advertisementData.localName
+            final name = r.advertisementData.advName.isNotEmpty
+                ? r.advertisementData.advName
                 : r.device.platformName.isNotEmpty
                     ? r.device.platformName
                     : 'Unknown Device';

@@ -48,11 +48,10 @@ class MockBleMedium {
   static final MockBleMedium instance = MockBleMedium._internal();
   MockBleMedium._internal() {
     // Start a periodic timer to update scanned devices based on positions
-    _scanTimer = Timer.periodic(const Duration(seconds: 2), (_) => _updateScans());
+    Timer.periodic(const Duration(seconds: 2), (_) => _updateScans());
   }
 
   final Map<String, SimulatedNodeRegistryEntry> nodes = {};
-  Timer? _scanTimer;
   static const double maxDiscoveryDistance = 120.0; // Distance beyond which nodes can't see each other
 
   /// Registers or updates a node in the medium.

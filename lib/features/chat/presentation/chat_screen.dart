@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
@@ -7,7 +6,6 @@ import '../../../core/services/providers.dart';
 import 'widgets/chat_bubble.dart';
 import 'widgets/swipe_to_reply.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:intl/intl.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String peerId;
@@ -262,7 +260,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       String? replyText;
                       if (msg.replyToMessageId != null) {
                         final repliedMsg = messages.firstWhere(
-                          (m) => m.id == msg.replyToMessageId,
+                          (m) => m.messageId == msg.replyToMessageId,
                           orElse: () => Message()..text = 'Original Message Deleted',
                         );
                         replyText = repliedMsg.text.isNotEmpty ? repliedMsg.text : 'Media Attachment';

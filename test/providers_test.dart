@@ -6,7 +6,6 @@ import 'package:bitchat/core/services/providers.dart';
 import 'package:bitchat/core/services/ble/mock_ble_service.dart';
 import 'package:bitchat/core/services/ble/real_ble_service.dart';
 import 'package:bitchat/core/services/database/database_service.dart';
-import 'package:bitchat/core/services/database/schemas/user_identity.dart';
 
 void main() {
   late ProviderContainer container;

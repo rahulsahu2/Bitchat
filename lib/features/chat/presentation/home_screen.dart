@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/services/providers.dart';
 import 'chat_screen.dart';
-import 'widgets/chat_bubble.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../settings/presentation/qr_pairing_screen.dart';
 

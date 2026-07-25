@@ -28,7 +28,6 @@ final simulationModeProvider = StateProvider<bool>((ref) => true);
 /// Provider for the active BleService implementation.
 final bleServiceProvider = Provider<BleService>((ref) {
   final isSim = ref.watch(simulationModeProvider);
-  final db = ref.watch(databaseServiceProvider);
 
   if (isSim) {
     // Obtain nickname and userId synchronously if identity exists, fallback to defaults
