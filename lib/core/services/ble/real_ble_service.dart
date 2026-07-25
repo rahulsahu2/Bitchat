@@ -113,13 +113,29 @@ class RealBleService implements BleService {
         bluetoothAdvertise.isGranted;
   }
 
+  /// Request permissions and auto-enable Bluetooth radio if off.
+  Future<bool> _ensureBluetoothOn() async {
+    final hasPermission = await _requestPermissions();
+    if (!hasPermission) return false;
+
+    try {
+      if (await fbp.FlutterBluePlus.adapterState.first != fbp.BluetoothAdapterState.on) {
+        await fbp.FlutterBluePlus.turnOn();
+        await Future.delayed(const Duration(milliseconds: 500)); // allow startup delay
+      }
+    } catch (e) {
+      debugPrint('Failed to turn on Bluetooth: $e');
+    }
+    return true;
+  }
+
   @override
   Future<void> startScanning() async {
     if (_isScanning) return;
 
-    final hasPermission = await _requestPermissions();
-    if (!hasPermission) {
-      debugPrint('BLE Scan permissions denied');
+    final enabled = await _ensureBluetoothOn();
+    if (!enabled) {
+      debugPrint('BLE Scan initialization failed (permission or hardware off)');
       return;
     }
 
@@ -177,9 +193,9 @@ class RealBleService implements BleService {
   Future<void> startAdvertising(String nickname, String userId) async {
     if (_isAdvertising) return;
 
-    final hasPermission = await _requestPermissions();
-    if (!hasPermission) {
-      debugPrint('BLE Advertising permissions denied');
+    final enabled = await _ensureBluetoothOn();
+    if (!enabled) {
+      debugPrint('BLE Advertising initialization failed (permission or hardware off)');
       return;
     }
 
