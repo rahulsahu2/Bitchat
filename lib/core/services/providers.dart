@@ -23,7 +23,7 @@ final databaseServiceProvider = Provider<DatabaseService>((ref) {
 
 /// Simulation Mode Toggle (Developer settings).
 /// Setting to true simulates a BLE mesh in memory, false runs real BLE hardware.
-final simulationModeProvider = StateProvider<bool>((ref) => true);
+final simulationModeProvider = StateProvider<bool>((ref) => false);
 
 /// Provider for the active BleService implementation.
 final bleServiceProvider = Provider<BleService>((ref) {

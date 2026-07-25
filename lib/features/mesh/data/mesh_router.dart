@@ -407,7 +407,8 @@ class MeshRouter {
           ..userId = peerId
           ..publicKey = pubKey ?? ''
           ..isTrusted = false // Defaults to untrusted until pairing verification
-          ..isBlocked = false;
+          ..isBlocked = false
+          ..avatarColor = 0xFF4CAF50; // Default green avatar color
       }
       peer.nickname = nickname;
       peer.status = 'Online';

@@ -36,7 +36,10 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
           ..userId = peerId
           ..publicKey = publicKey
           ..isTrusted = true // Mark as cryptographically verified/trusted
-          ..isBlocked = false;
+          ..isBlocked = false
+          ..avatarColor = 0xFF4CAF50 // Default green avatar color
+          ..lastRssi = -100
+          ..hops = 1;
       } else {
         peer.isTrusted = true;
         peer.publicKey = publicKey;
