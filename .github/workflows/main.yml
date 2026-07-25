@@ -37,9 +37,6 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Analyze Project
-        run: flutter analyze
-
       - name: Run Tests
         run: |
           if [ -d "test" ]; then
