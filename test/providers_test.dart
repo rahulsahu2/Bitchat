@@ -67,20 +67,20 @@ void main() {
       // 1. Create own identity first (since MockBleService requires it)
       await container.read(userIdentityProvider.notifier).createUserIdentity('Alice', 0xFF4CAF50);
 
-      // 2. Default state is simulated mode = true
-      expect(container.read(simulationModeProvider), isTrue);
+      // 2. Default state is simulated mode = false (Real BLE)
+      expect(container.read(simulationModeProvider), isFalse);
       var bleService = container.read(bleServiceProvider);
-      expect(bleService, isA<MockBleService>());
-
-      // 3. Swap simulation mode to false (Real BLE)
-      container.read(simulationModeProvider.notifier).state = false;
-      bleService = container.read(bleServiceProvider);
       expect(bleService, isA<RealBleService>());
 
-      // Swap back
+      // 3. Swap simulation mode to true (Mock BLE)
       container.read(simulationModeProvider.notifier).state = true;
       bleService = container.read(bleServiceProvider);
       expect(bleService, isA<MockBleService>());
+
+      // Swap back
+      container.read(simulationModeProvider.notifier).state = false;
+      bleService = container.read(bleServiceProvider);
+      expect(bleService, isA<RealBleService>());
     });
   });
 }

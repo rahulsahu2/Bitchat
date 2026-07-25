@@ -118,6 +118,9 @@ class RealBleService implements BleService {
     final hasPermission = await _requestPermissions();
     if (!hasPermission) return false;
 
+    // Eagerly request Notification Permission on Android 13+
+    await Permission.notification.request();
+
     try {
       if (await fbp.FlutterBluePlus.adapterState.first != fbp.BluetoothAdapterState.on) {
         await fbp.FlutterBluePlus.turnOn();

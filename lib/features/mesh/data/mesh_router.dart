@@ -7,6 +7,7 @@ import '../../../core/services/database/database_service.dart';
 import '../../../core/services/database/schemas/chat.dart';
 import '../../../core/services/database/schemas/message.dart';
 import '../../../core/services/database/schemas/peer.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/services/database/schemas/user_identity.dart';
 import '../../../core/services/encryption/crypto_service.dart';
 import '../domain/mesh_packet.dart';
@@ -574,6 +575,13 @@ class MeshRouter {
 
       // Emit new message event to Riverpod listeners
       _messageController.add(msg);
+
+      // Trigger local notification for incoming message
+      NotificationService.showNotification(
+        id: msg.id,
+        title: peer.nickname,
+        body: text.isNotEmpty ? text : (mediaType == 'image' ? '📷 Image' : '📎 File'),
+      );
 
       // 5. Send Acknowledgement (ACK)
       final ack = MeshPacket(

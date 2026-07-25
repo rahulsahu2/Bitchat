@@ -6,6 +6,7 @@ import '../../../core/services/providers.dart';
 import '../../../core/services/database/schemas/peer.dart';
 import '../../../core/services/encryption/crypto_service.dart';
 import 'package:uuid/uuid.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 class QrPairingScreen extends ConsumerStatefulWidget {
   const QrPairingScreen({super.key});
@@ -17,12 +18,14 @@ class QrPairingScreen extends ConsumerStatefulWidget {
 class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
   final _keyController = TextEditingController();
   final _nameController = TextEditingController();
+  final MobileScannerController _scannerController = MobileScannerController();
   bool _isScanningMode = false;
 
   @override
   void dispose() {
     _keyController.dispose();
     _nameController.dispose();
+    _scannerController.dispose();
     super.dispose();
   }
 
@@ -185,6 +188,36 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                     subtitle: const Text('QR exchange verifies your public key signature offline.'),
                   ),
                 ] else ...[
+                  // Real Camera QR Code Scanner View
+                  Container(
+                    height: 250,
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: MobileScanner(
+                      controller: _scannerController,
+                      onDetect: (capture) {
+                        final List<Barcode> barcodes = capture.barcodes;
+                        for (final barcode in barcodes) {
+                          final String? rawValue = barcode.rawValue;
+                          if (rawValue != null) {
+                            _simulateScan(rawValue);
+                            break;
+                          }
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Point the camera at another device\'s QR code to scan it.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                  ),
+                  const SizedBox(height: 24),
+
                   // Simulator Mock Scanner and Manual Inputs
                   Card(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
