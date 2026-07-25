@@ -273,6 +273,8 @@ class MeshRouter {
       
       // Update/add to neighbor table
       final existing = _neighbors[dev.id];
+      final isRssiChanged = existing == null || (existing.rssi - dev.rssi).abs() > 5;
+
       _neighbors[dev.id] = Neighbor(
         userId: dev.id,
         nickname: dev.name,
@@ -281,7 +283,7 @@ class MeshRouter {
         isConnected: existing?.isConnected ?? false,
       );
 
-      if (isNew) {
+      if (isNew || isRssiChanged) {
         _neighborController.add(_neighbors.values.toList());
       }
 

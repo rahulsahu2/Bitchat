@@ -172,9 +172,8 @@ class RealBleService implements BleService {
         _discoveredController.add(_discoveredCache.values.toList());
       });
 
-      // Scan for devices advertising our custom service UUID
+      // Scan broadly to guarantee discovery of all nearby devices, filtering in the listener
       await fbp.FlutterBluePlus.startScan(
-        withServices: [fbp.Guid(_serviceUuid)],
         timeout: const Duration(hours: 24), // Keep scanning in background
         androidUsesFineLocation: false, // Ensure location permission isn't requested if possible
       );
