@@ -143,7 +143,7 @@ class DatabaseService {
         .chatIdEqualTo(chatId)
         .sortByTimestampDesc()
         .limit(100)
-        .watch()
+        .watch(fireImmediately: true)
         .map((list) => list.reversed.toList()); // Emit in chronological order
   }
 
