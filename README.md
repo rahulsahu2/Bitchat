@@ -6,6 +6,17 @@ BitChat Mesh creates a decentralized, self-healing peer-to-peer network between 
 
 ---
 
+## 📥 Android Releases
+
+Optimized, signed release APK binaries are available on the **[GitHub Releases Page](https://github.com/rahulsahu2/Bitchat/releases)**.
+
+Download the APK that matches your device's CPU architecture:
+*   **ARM 64-bit (`app-arm64-v8a-release.apk`)**: Optimized for all modern Android phones.
+*   **ARM 32-bit (`app-armeabi-v7a-release.apk`)**: Optimized for older/legacy Android devices.
+*   **x86_64 (`app-x86_64-release.apk`)**: For emulation and Chromebook environments.
+
+---
+
 ## 🚀 Key Features
 
 *   **100% Offline P2P Mesh**: Automatically discovers and communicates with nearby devices using Bluetooth Low Energy (BLE). No GPS, cellular data, or server setup required.
@@ -118,6 +129,5 @@ flutter test
 ### Test Directory Layout
 *   `test/crypto_service_test.dart`: NIST P-256 Keygen, ECDH secrets, AES-GCM, and ECDSA signature verifiers.
 *   `test/database_service_test.dart`: Transaction checks, schema validations, query watchers.
-*   `test/ble_service_test.dart`: Coordinates RSSI signal decay and connection states.
 *   `test/mesh_router_test.dart`: Integrates routing, multi-hop relaying (`Alice <-> Bob <-> Charlie`), and reassembly.
 *   `test/providers_test.dart`: Riverpod state emission and BLE mode switching.
