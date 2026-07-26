@@ -137,14 +137,14 @@ class DatabaseService {
     }
   }
 
-  Stream<List<Message>> watchMessagesForChat(String chatId) {
-    return isar.messages
+  Stream<List<Message>> watchMessagesForChat(String chatId) async* {
+    yield await getMessagesForChat(chatId, limit: 100);
+
+    yield* isar.messages
         .filter()
         .chatIdEqualTo(chatId)
-        .sortByTimestampDesc()
-        .limit(100)
-        .watch(fireImmediately: true)
-        .map((list) => list.reversed.toList()); // Emit in chronological order
+        .watch()
+        .asyncMap((_) => getMessagesForChat(chatId, limit: 100));
   }
 
   // --- Packet History Queries ---
