@@ -219,7 +219,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         Expanded(
           child: neighborsAsync.when(
             data: (neighbors) {
-              if (neighbors.isEmpty) {
+              // Deduplicate neighbors by nickname to handle MAC address rotation
+              final Map<String, Neighbor> uniqueNeighbors = {};
+              for (final n in neighbors) {
+                final existing = uniqueNeighbors[n.nickname];
+                if (existing == null) {
+                  uniqueNeighbors[n.nickname] = n;
+                } else {
+                  if (n.isConnected && !existing.isConnected) {
+                    uniqueNeighbors[n.nickname] = n;
+                  } else if (!existing.isConnected && n.rssi > existing.rssi) {
+                    uniqueNeighbors[n.nickname] = n;
+                  }
+                }
+              }
+              final displayNeighbors = uniqueNeighbors.values.toList();
+
+              if (displayNeighbors.isEmpty) {
                 return const Center(
                   child: Padding(
                     padding: EdgeInsets.all(32.0),
@@ -245,10 +261,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
               }
 
               return ListView.separated(
-                itemCount: neighbors.length,
+                itemCount: displayNeighbors.length,
                 separatorBuilder: (_, __) => const Divider(height: 1),
                 itemBuilder: (context, index) {
-                  final neighbor = neighbors[index];
+                  final neighbor = displayNeighbors[index];
                   final isConnected = neighbor.isConnected;
 
                   return ListTile(
