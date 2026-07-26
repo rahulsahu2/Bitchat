@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/services/providers.dart';
+import '../../../core/services/ble/ble_service.dart';
 import 'chat_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../settings/presentation/qr_pairing_screen.dart';
@@ -280,7 +281,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(width: 8),
-                        if (isConnected)
+                        if (neighbor.connectionStatus == ConnectionStatus.connecting)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'Connecting...',
+                              style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                          )
+                        else if (isConnected)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
@@ -295,40 +308,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                       ],
                     ),
                     subtitle: Text('Signal: ${neighbor.rssi} dBm (RSSI)'),
-                    trailing: isConnected
-                        ? TextButton.icon(
-                            icon: const Icon(Icons.chat),
-                            label: const Text('Chat'),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ChatScreen(
-                                    peerId: neighbor.cryptoUserId ?? neighbor.userId,
-                                    nickname: neighbor.nickname,
-                                  ),
-                                ),
-                              );
-                            },
+                    trailing: neighbor.connectionStatus == ConnectionStatus.connecting
+                        ? const SizedBox(
+                            width: 80,
+                            child: Center(
+                              child: SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
                           )
-                        : OutlinedButton(
-                            child: const Text('Connect'),
-                            onPressed: () async {
-                              final ble = ref.read(bleServiceProvider);
-                              try {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Connecting to ${neighbor.nickname}...')),
-                                );
-                                await ble.connectTo(neighbor.userId);
-                              } catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Failed to connect: $e')),
+                        : isConnected
+                            ? TextButton.icon(
+                                icon: const Icon(Icons.chat),
+                                label: const Text('Chat'),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ChatScreen(
+                                        peerId: neighbor.cryptoUserId ?? neighbor.userId,
+                                        nickname: neighbor.nickname,
+                                      ),
+                                    ),
                                   );
-                                }
-                              }
-                            },
-                          ),
+                                },
+                              )
+                            : OutlinedButton(
+                                child: const Text('Connect'),
+                                onPressed: () async {
+                                  final ble = ref.read(bleServiceProvider);
+                                  try {
+                                    await ble.connectTo(neighbor.userId);
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Failed to connect: $e')),
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
                   );
                 },
               );

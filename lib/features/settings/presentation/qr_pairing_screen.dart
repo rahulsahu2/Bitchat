@@ -20,6 +20,7 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
   final _nameController = TextEditingController();
   final MobileScannerController _scannerController = MobileScannerController();
   bool _isScanningMode = false;
+  bool _isProcessingScan = false;
 
   @override
   void dispose() {
@@ -79,6 +80,10 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
   }
 
   void _processScannedPayload(String rawData) {
+    if (_isProcessingScan) return;
+    _isProcessingScan = true;
+    _scannerController.stop();
+
     try {
       final Map<String, dynamic> data = jsonDecode(rawData);
       final String nickname = data['nickname'] ?? 'Unknown';
@@ -91,6 +96,10 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
 
       _pairPeer(nickname, userId, publicKey);
     } catch (e) {
+      setState(() {
+        _isProcessingScan = false;
+      });
+      _scannerController.start();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to parse QR payload: $e')),
       );
@@ -128,21 +137,29 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    ChoiceChip(
-                      label: const Text('My QR Code'),
-                      selected: !_isScanningMode,
-                      onSelected: (selected) {
-                        setState(() => _isScanningMode = false);
-                      },
-                    ),
-                    const SizedBox(width: 16),
-                    ChoiceChip(
-                      label: const Text('Manual Input'),
-                      selected: _isScanningMode,
-                      onSelected: (selected) {
-                        setState(() => _isScanningMode = true);
-                      },
-                    ),
+                     ChoiceChip(
+                       label: const Text('My QR Code'),
+                       selected: !_isScanningMode,
+                       onSelected: (selected) {
+                         setState(() {
+                           _isScanningMode = false;
+                           _isProcessingScan = false;
+                         });
+                         _scannerController.stop();
+                       },
+                     ),
+                     const SizedBox(width: 16),
+                     ChoiceChip(
+                       label: const Text('Manual Input'),
+                       selected: _isScanningMode,
+                       onSelected: (selected) {
+                         setState(() {
+                           _isScanningMode = true;
+                           _isProcessingScan = false;
+                         });
+                         _scannerController.start();
+                       },
+                     ),
                   ],
                 ),
                 const SizedBox(height: 32),

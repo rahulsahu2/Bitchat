@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' as fbp;
 import 'package:ble_peripheral/ble_peripheral.dart' as bp;
@@ -22,6 +23,8 @@ class RealBleService implements BleService {
   // We keep track of device connections by their UUID
   final Map<String, fbp.BluetoothDevice> _connectedDevices = {};
   final Map<String, fbp.BluetoothCharacteristic> _dataCharacteristics = {};
+  final Map<String, StreamSubscription> _dataSubscriptions = {};
+  final Map<String, StreamSubscription> _connectionSubscriptions = {};
 
   StreamSubscription? _scanResultsSub;
   bool _isScanning = false;
@@ -29,9 +32,57 @@ class RealBleService implements BleService {
   final Map<String, BleDevice> _discoveredCache = {};
   Timer? _cacheCleanerTimer;
 
+  bool _shouldScan = false;
+  bool _shouldAdvertise = false;
+  String? _lastAdvertisedNickname;
+  String? _lastAdvertisedUserId;
+  StreamSubscription? _adapterStateSub;
+  StreamSubscription? _isScanningSub;
+
   RealBleService() {
-    _initPeripheral();
-    _startCacheCleaner();
+    final isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+    if (isMobile) {
+      _initPeripheral();
+      _startCacheCleaner();
+
+      // 1. Listen to adapter state changes to auto-start/stop scanning & advertising
+      _adapterStateSub = fbp.FlutterBluePlus.adapterState.listen((state) async {
+        debugPrint('DEBUG: BluetoothAdapterState changed to: $state');
+        if (state == fbp.BluetoothAdapterState.on) {
+          if (_shouldScan && !_isScanning) {
+            await startScanning();
+          }
+          if (_shouldAdvertise && _lastAdvertisedNickname != null && _lastAdvertisedUserId != null) {
+            await startAdvertising(_lastAdvertisedNickname!, _lastAdvertisedUserId!);
+          }
+        } else {
+          // Bluetooth turned off, reset flags and disconnect
+          _isScanning = false;
+          _isAdvertising = false;
+          _discoveredCache.clear();
+          _discoveredController.add([]);
+          // Mark all devices disconnected
+          for (final deviceId in _connectedDevices.keys.toList()) {
+            _handleDisconnect(deviceId);
+          }
+        }
+      });
+
+      // 2. Listen to isScanning to auto-restart if scanning drops but _shouldScan is true
+      _isScanningSub = fbp.FlutterBluePlus.isScanning.listen((scanning) {
+        _isScanning = scanning;
+        if (!scanning && _shouldScan) {
+          // Delayed restart to avoid system throttling
+          Timer(const Duration(seconds: 2), () async {
+            if (_shouldScan && !_isScanning) {
+              await startScanning();
+            }
+          });
+        }
+      });
+    } else {
+      debugPrint('RealBleService: Not on Android/iOS. Skipping BLE initialization.');
+    }
   }
 
   @override
@@ -134,6 +185,7 @@ class RealBleService implements BleService {
 
   @override
   Future<void> startScanning() async {
+    _shouldScan = true;
     if (_isScanning) return;
 
     final enabled = await _ensureBluetoothOn();
@@ -146,6 +198,7 @@ class RealBleService implements BleService {
       _isScanning = true;
       _discoveredCache.clear();
 
+      await _scanResultsSub?.cancel();
       _scanResultsSub = fbp.FlutterBluePlus.scanResults.listen((results) {
         for (final r in results) {
           // Check if this advertisement contains our custom Service UUID
@@ -172,10 +225,10 @@ class RealBleService implements BleService {
         _discoveredController.add(_discoveredCache.values.toList());
       });
 
-      // Scan broadly to guarantee discovery of all nearby devices, filtering in the listener
+      // Scan for 15 seconds to keep updates fresh and avoid throttling issues
       await fbp.FlutterBluePlus.startScan(
-        timeout: const Duration(hours: 24), // Keep scanning in background
-        androidUsesFineLocation: false, // Ensure location permission isn't requested if possible
+        timeout: const Duration(seconds: 15),
+        androidUsesFineLocation: false,
       );
     } catch (e) {
       _isScanning = false;
@@ -185,14 +238,18 @@ class RealBleService implements BleService {
 
   @override
   Future<void> stopScanning() async {
-    if (!_isScanning) return;
+    _shouldScan = false;
     _isScanning = false;
     await _scanResultsSub?.cancel();
+    _scanResultsSub = null;
     await fbp.FlutterBluePlus.stopScan();
   }
 
   @override
   Future<void> startAdvertising(String nickname, String userId) async {
+    _shouldAdvertise = true;
+    _lastAdvertisedNickname = nickname;
+    _lastAdvertisedUserId = userId;
     if (_isAdvertising) return;
 
     final enabled = await _ensureBluetoothOn();
@@ -211,7 +268,6 @@ class RealBleService implements BleService {
       };
       // bp.BlePeripheral has an updateCharacteristic value method
       // We will encode it so when centrals read our IDENTITY characteristic, they get our details.
-      // Wait, let's see how value can be set. Usually updateCharacteristic handles updating the GATT database value.
       final valueBytes = Uint8List.fromList(utf8.encode(jsonEncode(profile)));
       await bp.BlePeripheral.updateCharacteristic(
         characteristicId: _identityCharUuid,
@@ -231,7 +287,7 @@ class RealBleService implements BleService {
 
   @override
   Future<void> stopAdvertising() async {
-    if (!_isAdvertising) return;
+    _shouldAdvertise = false;
     _isAdvertising = false;
     await bp.BlePeripheral.stopAdvertising();
   }
@@ -240,12 +296,17 @@ class RealBleService implements BleService {
   Future<void> connectTo(String deviceId) async {
     if (_connectedDevices.containsKey(deviceId)) return;
 
+    // 1. Stop scanning before connecting to peripheral (crucial on Android)
+    if (_isScanning) {
+      await stopScanning();
+    }
+
     _connectionStateController.add(BleConnectionEvent(deviceId, ConnectionStatus.connecting));
 
     try {
       final fbpDevice = fbp.BluetoothDevice(remoteId: fbp.DeviceIdentifier(deviceId));
       
-      // Connect to Central
+      // Connect to Peripheral
       await fbpDevice.connect(autoConnect: false, timeout: const Duration(seconds: 10));
 
       // Discover Services
@@ -273,32 +334,37 @@ class RealBleService implements BleService {
 
       // Subscribe to notifications from peer data characteristic
       await dataChar.setNotifyValue(true);
-      dataChar.onValueReceived.listen((value) {
+      final dataSub = dataChar.onValueReceived.listen((value) {
         _incomingDataController.add(BleDataPacket(deviceId, Uint8List.fromList(value)));
       });
+      _dataSubscriptions[deviceId] = dataSub;
 
       // Setup connection listener for disconnects
-      fbpDevice.connectionState.listen((state) {
+      final connSub = fbpDevice.connectionState.listen((state) {
         if (state == fbp.BluetoothConnectionState.disconnected) {
           _handleDisconnect(deviceId);
         }
       });
+      _connectionSubscriptions[deviceId] = connSub;
 
       _connectionStateController.add(BleConnectionEvent(deviceId, ConnectionStatus.connected));
     } catch (e) {
       debugPrint('Failed to connect to device $deviceId: $e');
-      _connectedDevices.remove(deviceId);
-      _dataCharacteristics.remove(deviceId);
-      _connectionStateController.add(BleConnectionEvent(deviceId, ConnectionStatus.disconnected));
+      _handleDisconnect(deviceId);
     }
   }
 
   void _handleDisconnect(String deviceId) {
-    if (_connectedDevices.containsKey(deviceId)) {
-      _connectedDevices.remove(deviceId);
-      _dataCharacteristics.remove(deviceId);
-      _connectionStateController.add(BleConnectionEvent(deviceId, ConnectionStatus.disconnected));
-    }
+    _connectedDevices.remove(deviceId);
+    _dataCharacteristics.remove(deviceId);
+    
+    _dataSubscriptions[deviceId]?.cancel();
+    _dataSubscriptions.remove(deviceId);
+    
+    _connectionSubscriptions[deviceId]?.cancel();
+    _connectionSubscriptions.remove(deviceId);
+
+    _connectionStateController.add(BleConnectionEvent(deviceId, ConnectionStatus.disconnected));
   }
 
   @override
@@ -363,13 +429,23 @@ class RealBleService implements BleService {
   @override
   Future<void> dispose() async {
     _cacheCleanerTimer?.cancel();
+    _adapterStateSub?.cancel();
+    _isScanningSub?.cancel();
     await stopScanning();
     await stopAdvertising();
     for (final dev in _connectedDevices.values) {
       await dev.disconnect();
     }
+    for (final sub in _dataSubscriptions.values) {
+      await sub.cancel();
+    }
+    for (final sub in _connectionSubscriptions.values) {
+      await sub.cancel();
+    }
     _connectedDevices.clear();
     _dataCharacteristics.clear();
+    _dataSubscriptions.clear();
+    _connectionSubscriptions.clear();
     await _discoveredController.close();
     await _connectionStateController.close();
     await _incomingDataController.close();

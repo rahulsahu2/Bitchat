@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'dart:typed_data';
+import 'package:flutter/widgets.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/services/ble/ble_service.dart';
 import '../../../core/services/database/database_service.dart';
@@ -20,6 +21,7 @@ class Neighbor {
   DateTime lastSeen;
   bool isConnected;
   String? cryptoUserId;
+  ConnectionStatus connectionStatus;
 
   Neighbor({
     required this.userId,
@@ -28,6 +30,7 @@ class Neighbor {
     required this.lastSeen,
     required this.isConnected,
     this.cryptoUserId,
+    this.connectionStatus = ConnectionStatus.disconnected,
   });
 }
 
@@ -52,7 +55,7 @@ class ChunkAssembler {
 }
 
 /// Core routing engine that operates the Bluetooth Mesh Network.
-class MeshRouter {
+class MeshRouter with WidgetsBindingObserver {
   final BleService bleService;
   final DatabaseService dbService;
 
@@ -105,6 +108,12 @@ class MeshRouter {
       throw Exception('No User Identity generated yet. Please create profile first.');
     }
 
+    try {
+      WidgetsBinding.instance.addObserver(this);
+    } catch (_) {
+      debugPrint('WidgetsBinding not initialized. Skipping observer registration.');
+    }
+
     // Hook BLE streams
     _discoverySub = bleService.discoveredDevices.listen(_handleDiscoveredDevices);
     _connectionSub = bleService.connectionStateChanges.listen(_handleConnectionEvent);
@@ -120,6 +129,19 @@ class MeshRouter {
     if (_isPairingEnabled) {
       await bleService.startScanning();
       await bleService.startAdvertising(_identity!.nickname, _identity!.userId);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    debugPrint('DEBUG: didChangeAppLifecycleState changed to: $state');
+    if (state == AppLifecycleState.resumed) {
+      if (_isPairingEnabled) {
+        bleService.startScanning();
+        if (_identity != null) {
+          bleService.startAdvertising(_identity!.nickname, _identity!.userId);
+        }
+      }
     }
   }
 
@@ -282,6 +304,7 @@ class MeshRouter {
         lastSeen: dev.lastSeen,
         isConnected: existing?.isConnected ?? false,
         cryptoUserId: existing?.cryptoUserId,
+        connectionStatus: existing?.connectionStatus ?? ConnectionStatus.disconnected,
       );
 
       if (isNew || isRssiChanged) {
@@ -311,11 +334,13 @@ class MeshRouter {
         rssi: peer?.lastRssi ?? -80,
         lastSeen: DateTime.now(),
         isConnected: true,
+        connectionStatus: ConnectionStatus.connected,
       );
       _neighbors[event.deviceId] = neighbor;
     }
 
     if (neighbor != null) {
+      neighbor.connectionStatus = event.status;
       neighbor.isConnected = event.status == ConnectionStatus.connected;
       if (!neighbor.isConnected) {
         neighbor.lastSeen = DateTime.now();
@@ -325,8 +350,23 @@ class MeshRouter {
       if (event.status == ConnectionStatus.connected) {
         debugPrint('DEBUG [${_identity?.userId}]: Exchanging identity with ${event.deviceId}');
         _sendIdentityDetails(event.deviceId);
-      } else {
+      } else if (event.status == ConnectionStatus.disconnected) {
         _routeCache.removeWhere((dest, path) => path.contains(event.deviceId));
+        
+        // Auto-reconnect if it was a trusted paired connection that dropped
+        final finalNeighbor = neighbor;
+        if (finalNeighbor.cryptoUserId != null) {
+          debugPrint('DEBUG: Connection to ${finalNeighbor.nickname} dropped. Auto-reconnecting in 3s...');
+          Timer(const Duration(seconds: 3), () async {
+            final current = _neighbors[event.deviceId];
+            if (current != null && !current.isConnected && current.connectionStatus != ConnectionStatus.connecting) {
+              debugPrint('DEBUG: Reconnecting to ${finalNeighbor.nickname}...');
+              try {
+                await bleService.connectTo(event.deviceId);
+              } catch (_) {}
+            }
+          });
+        }
       }
     }
   }
@@ -429,6 +469,7 @@ class MeshRouter {
           lastSeen: DateTime.now(),
           isConnected: true,
           cryptoUserId: peerId,
+          connectionStatus: current.connectionStatus,
         );
       }
 
@@ -781,6 +822,9 @@ class MeshRouter {
   }
 
   Future<void> dispose() async {
+    try {
+      WidgetsBinding.instance.removeObserver(this);
+    } catch (_) {}
     _heartbeatTimer?.cancel();
     _maintenanceTimer?.cancel();
     await _discoverySub?.cancel();
