@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar/isar.dart';
-import 'package:bitchat/core/services/ble/mock_ble_service.dart';
+import 'mock_ble_service.dart';
 import 'package:bitchat/core/services/database/database_service.dart';
 import 'package:bitchat/core/services/database/schemas/user_identity.dart';
 import 'package:bitchat/core/services/database/schemas/peer.dart';

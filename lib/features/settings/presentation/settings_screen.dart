@@ -67,7 +67,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final identityAsync = ref.watch(userIdentityProvider);
-    final isSimMode = ref.watch(simulationModeProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -214,30 +213,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
                   child: Text(
-                    'DEVELOPER OPTIONS',
+                    'MESH CONFIGURATION',
                     style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
                   ),
                 ),
                 
-                // Simulation toggle
-                SwitchListTile(
-                  secondary: Icon(isSimMode ? Icons.layers : Icons.bluetooth),
-                  title: const Text('BLE Simulation Mode'),
-                  subtitle: Text(
-                    isSimMode 
-                        ? 'Simulating Bluetooth mesh network in-memory.' 
-                        : 'Using actual hardware BLE drivers.'
-                  ),
-                  value: isSimMode,
-                  onChanged: (val) {
-                    ref.read(simulationModeProvider.notifier).state = val;
-                  },
-                ),
-                
                 ListTile(
-                  leading: const Icon(Icons.animation),
-                  title: const Text('Simulation Canvas Graph'),
-                  subtitle: const Text('View and position virtual nodes, watch packet travel.'),
+                  leading: const Icon(Icons.analytics),
+                  title: const Text('Mesh Diagnostics'),
+                  subtitle: const Text('View neighbor connections, routing tables, and real-time telemetry.'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     Navigator.push(

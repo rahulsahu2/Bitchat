@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
-import 'ble_service.dart';
+import 'package:bitchat/core/services/ble/ble_service.dart';
 
 /// Represents a node's physical position in the virtual coordinate space (for UI drag & drop and RSSI calculations).
 class VirtualPosition {

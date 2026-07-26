@@ -19,6 +19,7 @@ class Neighbor {
   int rssi;
   DateTime lastSeen;
   bool isConnected;
+  String? cryptoUserId;
 
   Neighbor({
     required this.userId,
@@ -26,6 +27,7 @@ class Neighbor {
     required this.rssi,
     required this.lastSeen,
     required this.isConnected,
+    this.cryptoUserId,
   });
 }
 
@@ -279,6 +281,7 @@ class MeshRouter {
         rssi: dev.rssi,
         lastSeen: dev.lastSeen,
         isConnected: existing?.isConnected ?? false,
+        cryptoUserId: existing?.cryptoUserId,
       );
 
       if (isNew || isRssiChanged) {
@@ -415,6 +418,19 @@ class MeshRouter {
       peer.lastRssi = _neighbors[sourceDeviceId]?.rssi ?? -80;
       peer.hops = packet.hopCount + 1;
       await dbService.savePeer(peer);
+
+      // Update neighbor entry to associate its MAC address with the Cryptographic User ID
+      if (_neighbors.containsKey(sourceDeviceId)) {
+        final current = _neighbors[sourceDeviceId]!;
+        _neighbors[sourceDeviceId] = Neighbor(
+          userId: current.userId,
+          nickname: nickname,
+          rssi: current.rssi,
+          lastSeen: DateTime.now(),
+          isConnected: true,
+          cryptoUserId: peerId,
+        );
+      }
 
       // Trigger diagnostics refresh if peer was new
       if (isNewPeer) {
@@ -628,9 +644,16 @@ class MeshRouter {
 
   /// Finds or initiates route discovery for a destination peer.
   Future<List<String>> _resolveRoute(String targetUserId) async {
-    // 1. Direct neighbor check
-    if (_neighbors[targetUserId]?.isConnected ?? false) {
-      return [_identity!.userId, targetUserId];
+    // 1. Direct neighbor check (matching by MAC address or resolved cryptoUserId)
+    String? directMacAddress;
+    _neighbors.forEach((mac, neighbor) {
+      if (neighbor.isConnected && (mac == targetUserId || neighbor.cryptoUserId == targetUserId)) {
+        directMacAddress = mac;
+      }
+    });
+
+    if (directMacAddress != null) {
+      return [_identity!.userId, directMacAddress!];
     }
 
     // 2. Cache check

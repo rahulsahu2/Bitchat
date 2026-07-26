@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
 import 'package:bitchat/core/services/providers.dart';
-import 'package:bitchat/core/services/ble/mock_ble_service.dart';
 import 'package:bitchat/core/services/ble/real_ble_service.dart';
 import 'package:bitchat/core/services/database/database_service.dart';
 
@@ -63,23 +62,8 @@ void main() {
       expect(identityUpdated.avatarColor, equals(0xFFFF9800));
     });
 
-    test('BleServiceProvider dynamic implementation swapping', () async {
-      // 1. Create own identity first (since MockBleService requires it)
-      await container.read(userIdentityProvider.notifier).createUserIdentity('Alice', 0xFF4CAF50);
-
-      // 2. Default state is simulated mode = false (Real BLE)
-      expect(container.read(simulationModeProvider), isFalse);
-      var bleService = container.read(bleServiceProvider);
-      expect(bleService, isA<RealBleService>());
-
-      // 3. Swap simulation mode to true (Mock BLE)
-      container.read(simulationModeProvider.notifier).state = true;
-      bleService = container.read(bleServiceProvider);
-      expect(bleService, isA<MockBleService>());
-
-      // Swap back
-      container.read(simulationModeProvider.notifier).state = false;
-      bleService = container.read(bleServiceProvider);
+    test('BleServiceProvider resolves to RealBleService', () async {
+      final bleService = container.read(bleServiceProvider);
       expect(bleService, isA<RealBleService>());
     });
   });

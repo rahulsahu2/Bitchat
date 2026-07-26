@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'ble/ble_service.dart';
-import 'ble/mock_ble_service.dart';
 import 'ble/real_ble_service.dart';
 import 'database/database_service.dart';
 import 'database/schemas/chat.dart';
@@ -21,23 +20,9 @@ final databaseServiceProvider = Provider<DatabaseService>((ref) {
   return service;
 });
 
-/// Simulation Mode Toggle (Developer settings).
-/// Setting to true simulates a BLE mesh in memory, false runs real BLE hardware.
-final simulationModeProvider = StateProvider<bool>((ref) => false);
-
 /// Provider for the active BleService implementation.
 final bleServiceProvider = Provider<BleService>((ref) {
-  final isSim = ref.watch(simulationModeProvider);
-
-  if (isSim) {
-    // Obtain nickname and userId synchronously if identity exists, fallback to defaults
-    final identity = ref.watch(userIdentityProvider).valueOrNull;
-    final userId = identity?.userId ?? 'local-user';
-    final nickname = identity?.nickname ?? 'Me';
-    return MockBleService(userId, nickname);
-  } else {
-    return RealBleService();
-  }
+  return RealBleService();
 });
 
 // --- User Identity State Provider ---

@@ -78,7 +78,7 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
     }
   }
 
-  void _simulateScan(String rawData) {
+  void _processScannedPayload(String rawData) {
     try {
       final Map<String, dynamic> data = jsonDecode(rawData);
       final String nickname = data['nickname'] ?? 'Unknown';
@@ -137,7 +137,7 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                     ),
                     const SizedBox(width: 16),
                     ChoiceChip(
-                      label: const Text('Manual / Scan Simulator'),
+                      label: const Text('Manual Input'),
                       selected: _isScanningMode,
                       onSelected: (selected) {
                         setState(() => _isScanningMode = true);
@@ -210,7 +210,7 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                         for (final barcode in barcodes) {
                           final String? rawValue = barcode.rawValue;
                           if (rawValue != null) {
-                            _simulateScan(rawValue);
+                            _processScannedPayload(rawValue);
                             break;
                           }
                         }
@@ -222,62 +222,6 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                     'Point the camera at another device\'s QR code to scan it.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Simulator Mock Scanner and Manual Inputs
-                  Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            'Simulated Scan Tool',
-                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Running on a simulator? Click one of the virtual neighbors below to simulate scanning their QR code instantly.',
-                            style: TextStyle(color: Colors.grey, fontSize: 13),
-                          ),
-                          const SizedBox(height: 16),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              ActionChip(
-                                avatar: const CircleAvatar(child: Text('B')),
-                                label: const Text('Scan Mock Bob'),
-                                onPressed: () {
-                                  // Mock Bob details
-                                  final mockBobPayload = jsonEncode({
-                                    'userId': 'bob-id',
-                                    'nickname': 'Bob',
-                                    'publicKey': CryptoService.encodePublicKey(CryptoService.generateKeyPair().publicKey),
-                                  });
-                                  _simulateScan(mockBobPayload);
-                                },
-                              ),
-                              ActionChip(
-                                avatar: const CircleAvatar(child: Text('C')),
-                                label: const Text('Scan Mock Charlie'),
-                                onPressed: () {
-                                  // Mock Charlie details
-                                  final mockCharliePayload = jsonEncode({
-                                    'userId': 'charlie-id',
-                                    'nickname': 'Charlie',
-                                    'publicKey': CryptoService.encodePublicKey(CryptoService.generateKeyPair().publicKey),
-                                  });
-                                  _simulateScan(mockCharliePayload);
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
                   const SizedBox(height: 24),
                   // Manual Key Input Form

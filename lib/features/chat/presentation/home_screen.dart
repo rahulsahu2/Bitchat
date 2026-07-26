@@ -304,7 +304,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => ChatScreen(
-                                    peerId: neighbor.userId,
+                                    peerId: neighbor.cryptoUserId ?? neighbor.userId,
                                     nickname: neighbor.nickname,
                                   ),
                                 ),

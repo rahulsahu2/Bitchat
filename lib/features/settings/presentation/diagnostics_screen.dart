@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/app_theme.dart';
+import 'package:intl/intl.dart';
 import '../../../core/services/providers.dart';
-import '../../../core/services/ble/mock_ble_service.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../mesh/data/mesh_router.dart';
 import '../../mesh/domain/mesh_packet.dart';
 
 class DiagnosticsScreen extends ConsumerStatefulWidget {
@@ -14,516 +16,405 @@ class DiagnosticsScreen extends ConsumerStatefulWidget {
   ConsumerState<DiagnosticsScreen> createState() => _DiagnosticsScreenState();
 }
 
-class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen> with SingleTickerProviderStateMixin {
-  late final AnimationController _animationController;
-  final List<TravelingPacket> _travelingPackets = [];
-  StreamSubscription? _packetSubscription;
-
-  // Configuration for simulator controls
-  double _aliceX = 10;
-  double _bobX = 80;
-  double _charlieX = 180;
-  bool _automatedTraffic = false;
-  Timer? _trafficTimer;
+class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen> {
+  final List<String> _packetLogs = [];
+  List<Neighbor> _neighborsList = [];
+  StreamSubscription? _packetSub;
+  StreamSubscription? _neighborSub;
+  StreamSubscription? _messageSub;
 
   @override
   void initState() {
     super.initState();
-    // Repaint canvas at 60fps for smooth packet travel animations
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    )..repeat();
-
-    // Listen to routed packets stream
+    _addLog('Diagnostics session started. Telemetry initialized.');
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final router = ref.read(meshRouterStateProvider).valueOrNull;
-      if (router != null) {
-        _packetSubscription = router.onPacketRouted.listen(_handlePacketRouted);
-      }
+      final identity = ref.read(userIdentityProvider).valueOrNull;
       
-      // Load initial coordinates if nodes exist
-      final medium = MockBleMedium.instance;
-      setState(() {
-        _aliceX = medium.nodes['alice-id']?.position.x ?? 10;
-        _bobX = medium.nodes['bob-id']?.position.x ?? 80;
-        _charlieX = medium.nodes['charlie-id']?.position.x ?? 180;
-      });
+      if (identity != null) {
+        _addLog('Local Node ID: ${identity.userId}');
+        _addLog('Local Nickname: ${identity.nickname}');
+      }
+
+      if (router != null) {
+        setState(() {
+          _neighborsList = router.activeNeighbors;
+        });
+
+        // Listen for routed packets
+        _packetSub = router.onPacketRouted.listen((packet) {
+          final senderShort = packet.senderId.substring(0, min(packet.senderId.length, 8));
+          final receiverShort = packet.receiverId.substring(0, min(packet.receiverId.length, 8));
+          _addLog(
+            'Routed [${packet.type}] | Hop: ${packet.hopCount} | '
+            'Src: $senderShort | Dest: $receiverShort | Path: ${packet.path.join(" -> ")}'
+          );
+        });
+
+        // Listen for neighbor updates
+        _neighborSub = router.onNeighborsUpdated.listen((neighbors) {
+          if (mounted) {
+            setState(() {
+              _neighborsList = neighbors;
+            });
+            _addLog('Neighbors updated. Direct peer count: ${neighbors.where((n) => n.isConnected).length}');
+          }
+        });
+
+        // Listen for new messages
+        _messageSub = router.onNewMessage.listen((msg) {
+          _addLog('Received encrypted message packet from: ${msg.senderId}');
+        });
+      } else {
+        _addLog('ERROR: Mesh Router is not active or initialized.');
+      }
     });
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
-    _packetSubscription?.cancel();
-    _trafficTimer?.cancel();
+    _packetSub?.cancel();
+    _neighborSub?.cancel();
+    _messageSub?.cancel();
     super.dispose();
   }
 
-  void _handlePacketRouted(MeshPacket packet) {
-    // Animate the hop!
-    // For simplicity, if it's a broadcast or flooded packet, we animate from sender to all its connected nodes.
-    // If it's a unicast routed packet, we animate from sender to its next hop receiver.
+  void _addLog(String message) {
     if (!mounted) return;
-
-    final medium = MockBleMedium.instance;
-    final sender = medium.nodes[packet.senderId];
-    if (sender == null) return;
-
-    if (packet.receiverId == 'ALL' || packet.type == 'RREQ') {
-      // Broadcast/flood: animate to all connected neighbors
-      for (final peerId in sender.connectedPeers) {
-        setState(() {
-          _travelingPackets.add(
-            TravelingPacket(
-              id: packet.id,
-              fromId: packet.senderId,
-              toId: peerId,
-              color: packet.type == 'RREQ' ? Colors.orange : Colors.blue,
-              startTime: DateTime.now(),
-            ),
-          );
-        });
-      }
-    } else {
-      // Unicast: animate to the next hop target.
-      // Since it's traveling, we locate the next peer in range that is connected
-      for (final peerId in sender.connectedPeers) {
-        final peer = medium.nodes[peerId];
-        if (peer != null && peer.connectedPeers.contains(packet.senderId)) {
-          // Add animation
-          setState(() {
-            _travelingPackets.add(
-              TravelingPacket(
-                id: packet.id,
-                fromId: packet.senderId,
-                toId: peerId,
-                color: packet.type == 'ACK' ? Colors.green : Colors.purple,
-                startTime: DateTime.now(),
-              ),
-            );
-          });
-        }
-      }
-    }
-  }
-
-  void _injectVirtualNodes() {
-    final medium = MockBleMedium.instance;
-    medium.registerNode('alice-id', 'Alice', x: _aliceX, y: 100);
-    medium.registerNode('bob-id', 'Bob', x: _bobX, y: 100);
-    medium.registerNode('charlie-id', 'Charlie', x: _charlieX, y: 100);
-    
-    // Trigger scanning update in medium
-    medium.triggerScanUpdate();
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Virtual Nodes Alice, Bob, and Charlie successfully registered!')),
-    );
-  }
-
-  void _updateNodePosition(String id, double x) {
-    final medium = MockBleMedium.instance;
-    medium.updateNodePosition(id, x, 100);
-    medium.triggerScanUpdate();
-  }
-
-  void _toggleAutomatedTraffic(bool value) {
     setState(() {
-      _automatedTraffic = value;
+      final time = DateFormat('HH:mm:ss.SSS').format(DateTime.now());
+      _packetLogs.insert(0, '[$time] $message');
+      if (_packetLogs.length > 250) {
+        _packetLogs.removeLast();
+      }
     });
+  }
 
-    if (value) {
-      _trafficTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
-        final router = ref.read(meshRouterStateProvider).valueOrNull;
-        if (router != null && router.identity?.userId == 'alice-id') {
-          // Alice sends a diagnostics ping to Charlie
-          await router.sendMessage('charlie-id', 'Auto Mesh Ping #${Random().nextInt(100)}');
-        }
-      });
-    } else {
-      _trafficTimer?.cancel();
-    }
+  Color _getRssiColor(int rssi) {
+    if (rssi >= -65) return Colors.green;
+    if (rssi >= -85) return Colors.orange;
+    return Colors.red;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
-    // Clean up expired packet animations
-    final now = DateTime.now();
-    _travelingPackets.removeWhere(
-      (p) => now.difference(p.startTime) >= p.duration,
-    );
+    final router = ref.watch(meshRouterStateProvider).valueOrNull;
+    final routes = router?.routeCache ?? {};
 
-    // Read node entries from simulator medium
-    final mediumNodes = MockBleMedium.instance.nodes.values.toList();
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Mesh Diagnostics'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(icon: Icon(Icons.bluetooth), text: 'Neighbors'),
+              Tab(icon: Icon(Icons.alt_route), text: 'Routes'),
+              Tab(icon: Icon(Icons.terminal), text: 'Logs'),
+            ],
+          ),
+        ),
+        body: Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.chatBackgroundDark : Colors.grey[50],
+          ),
+          child: TabBarView(
+            children: [
+              // Neighbors Tab
+              _buildNeighborsTab(theme),
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mesh Topology & Diagnostics'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              MockBleMedium.instance.triggerScanUpdate();
-              setState(() {});
-            },
-          )
-        ],
+              // Routes Tab
+              _buildRoutesTab(theme, routes),
+
+              // Logs Tab
+              _buildLogsTab(theme),
+            ],
+          ),
+        ),
       ),
-      body: Column(
-        children: [
-          // Visual Canvas Graph Panel
-          Expanded(
-            flex: 4,
-            child: Container(
-              margin: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark ? AppTheme.chatBackgroundDark : Colors.grey[200],
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[300]!),
+    );
+  }
+
+  Widget _buildNeighborsTab(ThemeData theme) {
+    final connectedNeighbors = _neighborsList.where((n) => n.isConnected).toList();
+    final scannedNeighbors = _neighborsList.where((n) => !n.isConnected).toList();
+
+    if (_neighborsList.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.radar, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('Scanning for BLE mesh nodes...', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        if (connectedNeighbors.isNotEmpty) ...[
+          Text(
+            'ACTIVE CONNECTIONS (${connectedNeighbors.length})',
+            style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          ...connectedNeighbors.map((n) => _buildNeighborCard(theme, n, true)),
+          const SizedBox(height: 24),
+        ],
+        if (scannedNeighbors.isNotEmpty) ...[
+          Text(
+            'DISCOVERED ADVERTISING NODES (${scannedNeighbors.length})',
+            style: theme.textTheme.titleSmall?.copyWith(color: Colors.grey, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          ...scannedNeighbors.map((n) => _buildNeighborCard(theme, n, false)),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildNeighborCard(ThemeData theme, Neighbor neighbor, bool isConnected) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6.0),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: (isConnected ? theme.colorScheme.primary : Colors.grey).withOpacity(0.1),
+          child: Icon(
+            isConnected ? Icons.bluetooth_connected : Icons.bluetooth_searching,
+            color: isConnected ? theme.colorScheme.primary : Colors.grey,
+          ),
+        ),
+        title: Row(
+          children: [
+            Text(neighbor.nickname, style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(width: 8),
+            if (neighbor.cryptoUserId != null)
+              Icon(Icons.verified, size: 16, color: theme.colorScheme.primary),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              'MAC: ${neighbor.userId}',
+              style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+            ),
+            if (neighbor.cryptoUserId != null)
+              Text(
+                'CryptoID: ${neighbor.cryptoUserId!.substring(0, min(neighbor.cryptoUserId!.length, 12))}...',
+                style: const TextStyle(fontSize: 10, color: Colors.grey),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: AnimatedBuilder(
-                  animation: _animationController,
-                  builder: (context, _) {
-                    return CustomPaint(
-                      painter: MeshGraphPainter(
-                        nodes: mediumNodes,
-                        travelingPackets: _travelingPackets,
-                        theme: theme,
-                      ),
-                      child: Container(),
-                    );
-                  },
-                ),
-              ),
+          ],
+        ),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: _getRssiColor(neighbor.rssi).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            '${neighbor.rssi} dBm',
+            style: TextStyle(
+              color: _getRssiColor(neighbor.rssi),
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
             ),
           ),
+        ),
+      ),
+    );
+  }
 
-          // Controls Panel
-          Expanded(
-            flex: 5,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+  Widget _buildRoutesTab(ThemeData theme, Map<String, List<String>> routes) {
+    if (routes.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.alt_route, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('No mesh routes resolved yet.', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            SizedBox(height: 8),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 48.0),
+              child: Text(
+                'Routes are dynamically cached here once multi-hop messaging takes place.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        Text(
+          'ROUTING CACHE PATHS (${routes.length})',
+          style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        ...routes.entries.map((entry) {
+          final target = entry.key;
+          final path = entry.value;
+          final hopCount = path.length - 1;
+
+          return Card(
+            margin: const EdgeInsets.symmetric(vertical: 6.0),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Simulation Console',
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        'Target Peer: ${target.substring(0, min(target.length, 12))}...',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
-                      FilledButton.icon(
-                        icon: const Icon(Icons.group_add),
-                        label: const Text('Inject Nodes'),
-                        onPressed: _injectVirtualNodes,
-                      ),
+                      Chip(
+                        label: Text('$hopCount ${hopCount == 1 ? "Hop" : "Hops"}'),
+                        visualDensity: VisualDensity.compact,
+                        backgroundColor: theme.colorScheme.primaryContainer,
+                      )
                     ],
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Drag sliders to move nodes and change RSSI in real-time. Link breaks if distance exceeds 120.',
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Alice Position
-                  Row(
-                    children: [
-                      const SizedBox(width: 80, child: Text('Alice X')),
-                      Expanded(
-                        child: Slider(
-                          value: _aliceX,
-                          min: 0,
-                          max: 200,
-                          divisions: 20,
-                          label: _aliceX.round().toString(),
-                          onChanged: (val) {
-                            setState(() => _aliceX = val);
-                            _updateNodePosition('alice-id', val);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Bob Position
-                  Row(
-                    children: [
-                      const SizedBox(width: 80, child: Text('Bob X')),
-                      Expanded(
-                        child: Slider(
-                          value: _bobX,
-                          min: 0,
-                          max: 200,
-                          divisions: 20,
-                          label: _bobX.round().toString(),
-                          onChanged: (val) {
-                            setState(() => _bobX = val);
-                            _updateNodePosition('bob-id', val);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Charlie Position
-                  Row(
-                    children: [
-                      const SizedBox(width: 80, child: Text('Charlie X')),
-                      Expanded(
-                        child: Slider(
-                          value: _charlieX,
-                          min: 0,
-                          max: 200,
-                          divisions: 20,
-                          label: _charlieX.round().toString(),
-                          onChanged: (val) {
-                            setState(() => _charlieX = val);
-                            _updateNodePosition('charlie-id', val);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const Divider(height: 32),
-                  
-                  // Auto traffic
-                  SwitchListTile(
-                    title: const Text('Generate Automated Ping Traffic'),
-                    subtitle: const Text('Simulates periodic multi-hop messaging loops'),
-                    value: _automatedTraffic,
-                    onChanged: _toggleAutomatedTraffic,
-                  ),
+                  const Text('Resolved Hop Path:', style: TextStyle(fontSize: 11, color: Colors.grey)),
                   const SizedBox(height: 8),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: path.asMap().entries.map((pEntry) {
+                      final idx = pEntry.key;
+                      final node = pEntry.value;
+                      final isLast = idx == path.length - 1;
+                      final nodeShort = node.substring(0, min(node.length, 6));
 
-                  // Map Legend Card
-                  Card(
-                    elevation: 0,
-                    color: theme.colorScheme.surface.withOpacity(0.5),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('Legend / Packet Color Code:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              _buildLegendBadge(Colors.orange, 'RREQ (Route Search)'),
-                              const SizedBox(width: 12),
-                              _buildLegendBadge(Colors.purple, 'MSG (Encrypted Text)'),
-                            ],
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isLast ? theme.colorScheme.primary : Colors.grey[200],
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              idx == 0 ? 'Me' : nodeShort,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isLast ? Colors.white : Colors.black87,
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              _buildLegendBadge(Colors.green, 'ACK (Delivery Acknowledged)'),
-                              const SizedBox(width: 12),
-                              _buildLegendBadge(Colors.blue, 'Heartbeat (Scan discovery)'),
-                            ],
-                          ),
+                          if (!isLast)
+                            const Icon(Icons.arrow_right_alt, size: 16, color: Colors.grey),
                         ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                      );
+                    }).toList(),
+                  )
                 ],
               ),
             ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLegendBadge(Color color, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 11)),
+          );
+        }),
       ],
     );
   }
-}
 
-class TravelingPacket {
-  final String id;
-  final String fromId;
-  final String toId;
-  final Color color;
-  final DateTime startTime;
-  final Duration duration;
-
-  TravelingPacket({
-    required this.id,
-    required this.fromId,
-    required this.toId,
-    required this.color,
-    required this.startTime,
-    this.duration = const Duration(milliseconds: 1200),
-  });
-}
-
-class MeshGraphPainter extends CustomPainter {
-  final List<SimulatedNodeRegistryEntry> nodes;
-  final List<TravelingPacket> travelingPackets;
-  final ThemeData theme;
-
-  MeshGraphPainter({
-    required this.nodes,
-    required this.travelingPackets,
-    required this.theme,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final isDark = theme.brightness == Brightness.dark;
-    
-    // Scale coordinates from mock BLE positions (typically x ranges 0..200, y is 100)
-    // to fit the actual canvas coordinates.
-    // Node map range: X=0..200 -> margins: X = 40 .. size.width - 40
-    // Node Y=100 -> center: Y = size.height / 2
-    Offset getNodeCoords(SimulatedNodeRegistryEntry node) {
-      final double percentX = (node.position.x).clamp(0.0, 200.0) / 200.0;
-      final double x = 40.0 + percentX * (size.width - 80.0);
-      final double y = size.height / 2; // Linear row layout
-      return Offset(x, y);
-    }
-
-    // 1. Draw Connection Links
-    final Paint linePaint = Paint()
-      ..strokeWidth = 3.0
-      ..style = PaintingStyle.stroke;
-
-    final Set<String> drawnLinks = {};
-
-    for (final node in nodes) {
-      final nodeCoords = getNodeCoords(node);
-      for (final peerId in node.connectedPeers) {
-        final peer = nodes.firstWhere((n) => n.userId == peerId, orElse: () => node);
-        if (peer == node) continue; // Peer not found or self
-        
-        final linkKey = node.userId.compareTo(peerId) < 0 
-            ? '${node.userId}-$peerId' 
-            : '$peerId-${node.userId}';
-
-        if (drawnLinks.contains(linkKey)) continue;
-        drawnLinks.add(linkKey);
-
-        final peerCoords = getNodeCoords(peer);
-
-        // Calculate link distance to determine connection quality (RSSI)
-        final distance = (node.position.x - peer.position.x).abs();
-        
-        // Link color scales from green to red based on distance
-        if (distance <= 60) {
-          linePaint.color = Colors.green.withOpacity(0.4);
-        } else if (distance <= 100) {
-          linePaint.color = Colors.orange.withOpacity(0.4);
-        } else {
-          linePaint.color = Colors.red.withOpacity(0.3);
-        }
-
-        canvas.drawLine(nodeCoords, peerCoords, linePaint);
-      }
-    }
-
-    // 2. Draw Traveling Packet Dots
-    final Paint packetPaint = Paint()..style = PaintingStyle.fill;
-
-    for (final packet in travelingPackets) {
-      final fromNode = nodes.firstWhere((n) => n.userId == packet.fromId, orElse: () => nodes.first);
-      final toNode = nodes.firstWhere((n) => n.userId == packet.toId, orElse: () => nodes.first);
-      
-      final fromCoords = getNodeCoords(fromNode);
-      final toCoords = getNodeCoords(toNode);
-
-      final elapsed = DateTime.now().difference(packet.startTime).inMilliseconds;
-      final double progress = (elapsed / packet.duration.inMilliseconds).clamp(0.0, 1.0);
-
-      // Lerp coordinates
-      final Offset currentCoords = Offset(
-        fromCoords.dx + (toCoords.dx - fromCoords.dx) * progress,
-        fromCoords.dy + (toCoords.dy - fromCoords.dy) * progress,
-      );
-
-      // Draw packet outer glow
-      packetPaint.color = packet.color.withOpacity(0.3);
-      canvas.drawCircle(currentCoords, 9.0, packetPaint);
-
-      // Draw packet inner core
-      packetPaint.color = packet.color;
-      canvas.drawCircle(currentCoords, 5.0, packetPaint);
-    }
-
-    // 3. Draw Nodes (Devices)
-    final Paint circlePaint = Paint()..style = PaintingStyle.fill;
-    final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
-
-    for (final node in nodes) {
-      final coords = getNodeCoords(node);
-      final isLocal = node.userId == 'alice-id'; // Assume Alice is the primary simulator user
-
-      // Node base circle
-      circlePaint.color = isLocal 
-          ? theme.colorScheme.primary 
-          : (isDark ? Colors.grey[800]! : Colors.white);
-      canvas.drawCircle(coords, 22.0, circlePaint);
-
-      // Node border
-      final Paint borderPaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5
-        ..color = isLocal ? Colors.green : Colors.grey;
-      canvas.drawCircle(coords, 22.0, borderPaint);
-
-      // Draw letter index inside circle
-      final initial = node.nickname.isNotEmpty ? node.nickname[0].toUpperCase() : '?';
-      textPainter.text = TextSpan(
-        text: initial,
-        style: TextStyle(
-          color: isLocal ? Colors.white : (isDark ? Colors.white : Colors.black87),
-          fontWeight: FontWeight.bold,
-          fontSize: 18,
+  Widget _buildLogsTab(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Controls Row
+        Container(
+          padding: const EdgeInsets.all(12),
+          color: theme.scaffoldBackgroundColor,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.fiber_manual_record, color: Colors.red, size: 14),
+                  SizedBox(width: 8),
+                  Text('Live Feed Console', style: TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.copy),
+                    tooltip: 'Copy all logs',
+                    onPressed: () {
+                      if (_packetLogs.isEmpty) return;
+                      Clipboard.setData(ClipboardData(text: _packetLogs.reversed.join('\n')));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Logs copied to clipboard!')),
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_sweep),
+                    tooltip: 'Clear logs',
+                    onPressed: () {
+                      setState(() {
+                        _packetLogs.clear();
+                        _addLog('Logs cleared.');
+                      });
+                    },
+                  ),
+                ],
+              )
+            ],
+          ),
         ),
-      );
-      textPainter.layout();
-      textPainter.paint(
-        canvas,
-        Offset(coords.dx - textPainter.width / 2, coords.dy - textPainter.height / 2),
-      );
-
-      // Draw device nickname below circle
-      textPainter.text = TextSpan(
-        text: '${node.nickname}${isLocal ? ' (Local)' : ''}',
-        style: TextStyle(
-          color: isDark ? Colors.grey[300] : Colors.grey[800],
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      );
-      textPainter.layout();
-      textPainter.paint(
-        canvas,
-        Offset(coords.dx - textPainter.width / 2, coords.dy + 28),
-      );
-    }
+        
+        // Logs Terminal
+        Expanded(
+          child: Container(
+            margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[900]!),
+            ),
+            child: _packetLogs.isEmpty
+              ? const Center(child: Text('[Empty Console]', style: TextStyle(color: Colors.grey, fontFamily: 'monospace')))
+              : ListView.builder(
+                  reverse: false,
+                  itemCount: _packetLogs.length,
+                  itemBuilder: (context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2.0),
+                      child: Text(
+                        _packetLogs[index],
+                        style: const TextStyle(
+                          color: Colors.greenAccent,
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                          height: 1.3,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+          ),
+        )
+      ],
+    );
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
