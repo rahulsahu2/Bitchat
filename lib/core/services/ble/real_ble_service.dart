@@ -151,17 +151,19 @@ class RealBleService implements BleService {
     }
   }
 
-  /// Request Bluetooth permissions (excluding location if possible).
+  /// Request Bluetooth & Location permissions.
   Future<bool> _requestPermissions() async {
     if (kIsWeb) return false;
 
     final bluetoothScan = await Permission.bluetoothScan.request();
     final bluetoothConnect = await Permission.bluetoothConnect.request();
     final bluetoothAdvertise = await Permission.bluetoothAdvertise.request();
+    final location = await Permission.location.request();
 
     return bluetoothScan.isGranted &&
         bluetoothConnect.isGranted &&
-        bluetoothAdvertise.isGranted;
+        bluetoothAdvertise.isGranted &&
+        location.isGranted;
   }
 
   /// Request permissions and auto-enable Bluetooth radio if off.
@@ -228,7 +230,7 @@ class RealBleService implements BleService {
       // Scan for 15 seconds to keep updates fresh and avoid throttling issues
       await fbp.FlutterBluePlus.startScan(
         timeout: const Duration(seconds: 15),
-        androidUsesFineLocation: false,
+        androidUsesFineLocation: true,
       );
     } catch (e) {
       _isScanning = false;
