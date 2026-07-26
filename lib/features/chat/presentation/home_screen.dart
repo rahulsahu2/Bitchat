@@ -5,6 +5,7 @@ import '../../../core/services/providers.dart';
 import 'chat_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../settings/presentation/qr_pairing_screen.dart';
+import '../../mesh/data/mesh_router.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
