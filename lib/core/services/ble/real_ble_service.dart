@@ -311,6 +311,14 @@ class RealBleService implements BleService {
       // Connect to Peripheral
       await fbpDevice.connect(autoConnect: false, timeout: const Duration(seconds: 10));
 
+      // Request larger MTU for packet transfers (default is only 23 bytes, which would truncate mesh packets)
+      try {
+        await fbpDevice.requestMtu(512, timeout: 5);
+        debugPrint('DEBUG: MTU requested successfully');
+      } catch (e) {
+        debugPrint('Failed to request MTU (expected on iOS): $e');
+      }
+
       // Discover Services
       final services = await fbpDevice.discoverServices();
       fbp.BluetoothCharacteristic? dataChar;
@@ -388,7 +396,7 @@ class RealBleService implements BleService {
     final dataChar = _dataCharacteristics[deviceId];
     if (dataChar != null) {
       try {
-        await dataChar.write(data, withoutResponse: true);
+        await dataChar.write(data, withoutResponse: false);
         return;
       } catch (e) {
         debugPrint('Write failed as Central, trying notification: $e');
